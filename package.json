@@ -1,0 +1,40 @@
+{
+  "name": "anti-social",
+  "version": "1.0.0",
+  "description": "UnaHur anti-social net - Trabajo Práctico",
+  "main": "./src/index.js",
+  "scripts": {
+    "start": "cross-env NODE_ENV=production node src/index.js",
+    "dev": "cross-env NODE_ENV=development nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:test": "cross-env NODE_ENV=test nodemon src/index.js",
+    "test:users": "cross-env NODE_ENV=test newman run src/tests/UsersTestCollection.json -e src/tests/BASE_URL_ENV.json",
+    "test:posts": "cross-env NODE_ENV=test newman run src/tests/PostsTestCollection.json -e src/tests/BASE_URL_ENV.json --working-dir src/tests/images",
+    "test:tags": "cross-env NODE_ENV=test newman run src/tests/TagsTestCollection.json -e src/tests/BASE_URL_ENV.json",
+    "test:comms": "cross-env NODE_ENV=test newman run src/tests/CommentsTestCollection.json -e src/tests/BASE_URL_ENV.json",
+    "test:followers": "cross-env NODE_ENV=test newman run src/tests/FollowersTestCollection.json -e src/tests/BASE_URL_ENV.json",
+    "test:all": "npm run test:users && npm run test:posts && npm run test:tags && npm run test:comms && npm run test:followers"
+  },
+  "author": "Gerardo Gonzalez Tulian",
+  "license": "MIT",
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "newman": "^6.2.3",
+    "nodemon": "^3.1.10"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "joi": "^18.3.0",
+    "mongoose": "^9.11.4",
+    "multer": "^2.5.0",
+    "redis": "^6.3.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "allowScripts": {
+    "@scarf/scarf@1.4.0": true
+  }
+}

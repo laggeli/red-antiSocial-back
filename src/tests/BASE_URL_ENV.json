@@ -1,0 +1,11 @@
+{
+  "id": "BASE_URL_ENV",
+  "name": "BASE_URL_ENV",
+  "values": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "enabled": true
+    }
+  ]
+}

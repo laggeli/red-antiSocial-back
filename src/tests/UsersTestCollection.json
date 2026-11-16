@@ -1,0 +1,611 @@
+{
+  "info": {
+    "_postman_id": "35f9f7c0-4111-436b-bd9e-50468b00f94a",
+    "name": "UsersTestCollection",
+    "description": "Pruebas de EndPoints de Users para MongoDB corregidas y optimizadas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET/Users (getUsers)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un GET a /users, cuando el servidor responde, entonces el código de estado debe ser 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Dado que obtengo la lista de usuarios, cuando recibo la respuesta, entonces el cuerpo debe ser un array de usuarios\", function () {",
+              "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+              "});",
+              "",
+              "pm.test(\"Dado que recibo usuarios, cuando analizo cada objeto, entonces debe tener los campos nickName, nombre y email\", function () {",
+              "    const users = pm.response.json();",
+              "    users.forEach(user => {",
+              "        pm.expect(user).to.have.property(\"nickName\");",
+              "        pm.expect(user).to.have.property(\"nombre\");",
+              "        pm.expect(user).to.have.property(\"email\");",
+              "    });",
+              "});",
+              "",
+              "pm.test(\"Dado que cada usuario tiene un email, cuando verifico su contenido, entonces debe tener un formato válido de correo electrónico\", function () {",
+              "    const users = pm.response.json();",
+              "    users.forEach(user => {",
+              "        pm.expect(user.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users (createUser)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un POST a /users, cuando creo un usuario válido, entonces el código de estado debe ser 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test(\"Dado que creo un usuario, cuando recibo la respuesta, entonces debe contener los campos nickName, nombre y email\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res).to.have.property(\"user\");",
+              "    pm.expect(res.user).to.have.property(\"nickName\");",
+              "    pm.expect(res.user).to.have.property(\"nombre\");",
+              "    pm.expect(res.user).to.have.property(\"email\");",
+              "    ",
+              "    // Guardado del nickName dinámico en la colección",
+              "    pm.collectionVariables.set(\"CURRENT_USER_NICKNAME\", res.user.nickName);",
+              "});",
+              "",
+              "pm.test(\"Dado que el usuario tiene email, cuando verifico su contenido, entonces debe tener formato válido\", function () {",
+              "    const res = pm.response.json();",
+              "    if (res && res.user) {",
+              "        pm.expect(res.user.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"prueba_nueva_{{$randomInt}}\",\n  \"nombre\": \"Susana Chavez\",\n  \"email\": \"prueba_nueva_{{$randomInt}}@test.com\",\n  \"contraseña\": \"123456\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName (getUser)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un usuario, cuando hago un GET /users/:nickName, entonces devuelve los datos del usuario y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"La respuesta contiene los datos del usuario\", function () {",
+              "    const user = pm.response.json();",
+              "    const nickNameEsperado = pm.collectionVariables.get(\"CURRENT_USER_NICKNAME\");",
+              "    pm.expect(user.nickName).to.equal(nickNameEsperado);",
+              "    pm.expect(user).to.have.property(\"nombre\");",
+              "    pm.expect(user).to.have.property(\"email\");",
+              "});",
+
+              "pm.test(\"El GET no debe devolver la contraseña\", function () {",
+              "    const user = pm.response.json();",
+              "    pm.expect(user).to.not.have.property(\"contraseña\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{CURRENT_USER_NICKNAME}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH/Users/:nickName (updateUser)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un usuario, cuando se hace un PATCH /users/:nickName, entonces se modifica el usuario y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"La respuesta contiene el usuario actualizado\", function () {",
+              "    const res = pm.response.json();",
+              "",
+              "    pm.expect(res).to.have.property(\"user\");",
+              "    pm.expect(res.user).to.have.property(\"nickName\");",
+              "    pm.expect(res.user).to.have.property(\"nombre\");",
+              "    pm.expect(res.user).to.have.property(\"email\");",
+              "});",
+              "",
+              "pm.test(\"El nombre del usuario fue actualizado correctamente\", function () {",
+              "    const res = pm.response.json();",
+              "",
+              "    pm.expect(res.user.nombre).to.equal(\"Cambio de nombre\");",
+              "});",
+              "",
+              "pm.test(\"La respuesta no debe incluir la contraseña\", function () {",
+              "    const res = pm.response.json();",
+              "",
+              "    pm.expect(res.user).to.not.have.property(\"contraseña\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "users",
+            "{{CURRENT_USER_NICKNAME}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Cambio de nombre\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH/Users/:nickName (updatePassword)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un usuario, cuando se hace un PATCH de contraseña, se modifica la contraseña sin exponerla y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"La respuesta contiene el usuario actualizado\", function () {",
+              "    const res = pm.response.json();",
+              "",
+              "    pm.expect(res).to.have.property(\"user\");",
+              "    pm.expect(res.user).to.have.property(\"nickName\");",
+              "});",
+              "",
+              "pm.test(\"La respuesta no debe exponer la contraseña\", function () {",
+              "    const res = pm.response.json();",
+              "",
+              "    pm.expect(res.user).to.not.have.property(\"contraseña\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "users",
+            "{{CURRENT_USER_NICKNAME}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contraseña\": \"nuevaClave789\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users (createUser - Para Following Test)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un usuario, cuando uno sigue a otro usuario, entonces se crea una relación de seguidor\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const res = pm.response.json();",
+              "    pm.collectionVariables.set(\"USER_NICKNAME_SEGUIDO\", res.user.nickName);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"user_seguido_{{$randomInt}}\",\n  \"nombre\": \"UsuarioSeguido\",\n  \"email\": \"user_seguido_{{$randomInt}}@test.com\",\n  \"contraseña\": \"meSiguen1000\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users/:nickName/following/:followedNickName (followUser)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un POST a /users/:nickName/following/:followedNickName, cuando sigo a otro usuario, el código de estado debe ser 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test(\"Devuelve el mensaje de confirmación de seguimiento\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res).to.have.property(\"message\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}/following/{{USER_NICKNAME_SEGUIDO}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{CURRENT_USER_NICKNAME}}", "following", "{{USER_NICKNAME_SEGUIDO}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName/followers (getFollowers)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un GET a /users/:nickName/followers, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Se responde con un array que contiene los datos del seguidor\", function () {",
+              "    const followers = pm.response.json();",
+              "    pm.expect(followers).to.be.an(\"array\");",
+              "    const currentUser = pm.collectionVariables.get(\"CURRENT_USER_NICKNAME\");",
+              "    const existe = followers.some(u => u && u.nickName === currentUser);",
+              "    pm.expect(existe).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{USER_NICKNAME_SEGUIDO}}/followers",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{USER_NICKNAME_SEGUIDO}}", "followers"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName/following (getFollowing)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un GET a /users/:nickName/following, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Se responde con un array que contiene a los usuarios seguidos\", function () {",
+              "    const following = pm.response.json();",
+              "    pm.expect(following).to.be.an(\"array\");",
+              "    const seguidoUser = pm.collectionVariables.get(\"USER_NICKNAME_SEGUIDO\");",
+              "    const existe = following.some(u => u && u.nickName === seguidoUser);",
+              "    pm.expect(existe).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}/following",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{CURRENT_USER_NICKNAME}}", "following"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE/Users/:nickName/following/:followedNickName (unFollowUser)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un DELETE a /users/:nickName/following/:followedNickName, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}/following/{{USER_NICKNAME_SEGUIDO}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{CURRENT_USER_NICKNAME}}", "following", "{{USER_NICKNAME_SEGUIDO}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE/Users/:nickName (deleteUser - Al usuario Seguido)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un usuario secundario, que es seguido por otro usuario, si se lo elimina debe dar como resultado 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.collectionVariables.unset(\"USER_NICKNAME_SEGUIDO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{USER_NICKNAME_SEGUIDO}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{USER_NICKNAME_SEGUIDO}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE/Users/:nickName (deleteUser - Principal)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un DELETE a /users/:nickName, elimina el usuario principal y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Limpia la variable dinámicamente asignada\", function () {",
+              "    pm.collectionVariables.unset(\"CURRENT_USER_NICKNAME\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{CURRENT_USER_NICKNAME}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{CURRENT_USER_NICKNAME}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users (Crear 5 Usuarios)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "if (!pm.collectionVariables.get('USUARIOS_CREADOS')) {",
+              "    pm.collectionVariables.set('USUARIOS_CREADOS', '1');",
+              "    pm.collectionVariables.set('NICKNAMES_CREADOS', JSON.stringify([]));",
+              "}",
+              "",
+              "const contador = parseInt(pm.collectionVariables.get('USUARIOS_CREADOS'));",
+              "const randomId = Math.floor(Math.random() * 10000);",
+              "const nickName = `user_test_${contador}_${randomId}`;",
+              "",
+              "pm.variables.set('TEMP_NICKNAME', nickName);",
+              "pm.variables.set('TEMP_EMAIL', `${nickName}@test.com`);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const contadorActual = pm.collectionVariables.get('USUARIOS_CREADOS');",
+              "",
+              "pm.test(`Dado que envío una solicitud para crear el usuario #${contadorActual} de 5, cuando el servidor procesa los datos, entonces responde con 201 (Created)`, function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test(`Dado que se procesa cada usuario del lote, cuando reviso la respuesta, contiene la propiedad 'user' con su nickName`, function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res).to.have.property('user');",
+              "    pm.expect(res.user).to.have.property('nickName');",
+              "    ",
+              "    let listaNickNames = JSON.parse(pm.collectionVariables.get('NICKNAMES_CREADOS'));",
+              "    listaNickNames.push(res.user.nickName);",
+              "    pm.collectionVariables.set('NICKNAMES_CREADOS', JSON.stringify(listaNickNames));",
+              "});",
+              "",
+              "let numeroContador = parseInt(contadorActual);",
+              "if (numeroContador < 5) {",
+              "    pm.collectionVariables.set('USUARIOS_CREADOS', (numeroContador + 1).toString());",
+              "    pm.execution.setNextRequest('POST/Users (Crear 5 Usuarios)');",
+              "} else {",
+              "    const listaFinal = JSON.parse(pm.collectionVariables.get('NICKNAMES_CREADOS'));",
+              "pm.test(`Dado que finalizó el proceso en lote, cuando verifico la cantidad total, entonces se crearon ${listaFinal.length} usuarios: usuarios -> [${listaFinal.join(', ')}]`, function () {",
+              "    pm.expect(listaFinal.length).to.equal(5);",
+              "});",
+              "    pm.collectionVariables.unset('USUARIOS_CREADOS');",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"{{TEMP_NICKNAME}}\",\n  \"nombre\": \"Usuario De Prueba\",\n  \"email\": \"{{TEMP_EMAIL}}\",\n  \"contraseña\": \"123456\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users (Verificar los 5 usuarios creados)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Dado que solicito la lista de usuarios, cuando el servidor responde, entonces el código de estado debe ser 200 (OK)', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const usuarios = pm.response.json();",
+              "const nickNamesCreados = JSON.parse(pm.collectionVariables.get('NICKNAMES_CREADOS'));",
+              "",
+              "pm.test(`Dado que obtuve la lista completa de usuarios, cuando analizo la base de datos, entonces se encuentran presentes los ${nickNamesCreados.length} usuarios creados: [${nickNamesCreados.join(', ')}]`, function () {",
+              "    pm.expect(nickNamesCreados.length).to.equal(5);",
+              "    ",
+              "    nickNamesCreados.forEach(nick => {",
+              "        const existe = usuarios.some(user => user && user.nickName === nick);",
+              "        pm.expect(existe, `El usuario ${nick} no fue encontrado en la base de datos`).to.be.true;",
+              "    });",
+              "});",
+              "",
+              "pm.collectionVariables.unset('NICKNAMES_CREADOS');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

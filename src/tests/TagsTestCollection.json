@@ -1,0 +1,212 @@
+{
+  "info": {
+    "name": "TagsTestCollection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+  {
+    "key": "tagId",
+    "value": "635f1c2e4a1b9c2d3e4f5a6b",
+    "type": "string"
+  }
+  ],
+  "item": [
+    {
+      "name": "GET/Tags (getTags)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+                "pm.test(\"Dado que hago un GET a /tags, cuando el servidor responde, entonces el código de estado debe ser 200 (OK)\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "pm.test(\"Dado que obtengo la lista de etiquetas, cuando recibo la respuesta, entonces el cuerpo debe ser un array\", function () {",
+                "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+                "});" ,
+                "pm.test(\"Dado que obtengo la lista de etiquetas, cuando recibo la respuesta, entonces cada etiqueta debe tener _id y nombre\", function () {",
+                "   const tags = pm.response.json();",
+                "    tags.forEach(tag => {",
+                "        pm.expect(tag).to.have.property(\"_id\");",
+                "        pm.expect(tag).to.have.property(\"nombre\");",
+                "    });",
+                "});" 
+            ],
+            "type": "text/javascript"
+            }
+        }
+       ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/tags",
+          "host": ["{{BASE_URL}}"],
+          "path": ["tags"]
+        }
+      }
+    },
+    {
+      "name": "POST/Tags (createTag)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+                "    const jsonData = pm.response.json(); ",
+                "pm.test(\"Dado que envío los datos para crear una etiqueta, cuando el servidor procesa la solicitud, entonces el código de estado debe ser 201 (Created)\", function () {",
+                "    pm.response.to.have.status(201);",
+                "});",
+                "pm.test(\"Dado que se crea la etiqueta correctamente, cuando recibo la respuesta, entonces debe retornar el objeto con sus propiedades _id y nombre\", function () {",
+                "    pm.expect(jsonData).to.have.property(\"_id\");",
+                "    pm.expect(jsonData).to.have.property(\"nombre\");",
+                "    pm.expect(jsonData.nombre).to.be.a(\"string\");",
+                "});",
+
+                "    if (jsonData._id) {",
+                "     pm.collectionVariables.set(\"TAG_ID_1\", jsonData._id);",
+                "     pm.collectionVariables.set(\"tagId\", jsonData._id);",
+
+                "     console.log(\"Etiqueta creada con ID: \" + jsonData._id);",
+                "}"
+            ],
+            "type": "text/javascript"
+            }
+        }
+       ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"TagNueva_{{$randomInt}}\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/tags",
+          "host": ["{{BASE_URL}}"],
+          "path": ["tags"]
+        }
+      }
+    },
+    {
+      "name": "POST/Tags (createTag - Segunda etiqueta)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Dado que envío los datos para crear una etiqueta, cuando el servidor procesa la solicitud, entonces el código de estado debe ser 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const tag = pm.response.json();",
+              "    pm.expect(tag).to.have.property(\"_id\");",
+              "    pm.expect(tag).to.have.property(\"nombre\");",
+              "    pm.collectionVariables.set(\"TAG_ID_2\", tag._id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"TagSegunda_{{$randomInt}}\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/tags",
+          "host": ["{{BASE_URL}}"],
+          "path": ["tags"]
+        }
+      }
+    },
+    {
+      "name": "GET/Tags/:id (getTagById)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+                "pm.test(\"Dado que hago un GET a una etiqueta por ID, cuando el servidor responde, entonces el código de estado debe ser 200 (OK)\", function () {",
+                "    pm.response.to.have.status(200);",
+                "});",
+                "pm.test(\"Dado que busco una etiqueta existente, cuando recibo el JSON, entonces debe tener _id y nombre\", function () {",
+                "    const tag = pm.response.json();",
+                "    pm.expect(tag).to.have.property(\"_id\");",
+                "    pm.expect(tag).to.have.property(\"nombre\");",
+                "    pm.expect(tag.nombre).to.be.a(\"string\");",
+                "});",
+                "",
+                "pm.test(\"Dado que intento buscar una etiqueta inexistente, entonces debe devolver 404 (Not Found)\", function () {",
+                "    if (pm.response.code === 404) {",
+                "        const res = pm.response.json();",
+                "        pm.expect(res).to.have.property(\"message\");",
+                "    }",
+                "});"
+            ],
+            "type": "text/javascript"
+            }
+        }
+      ],    
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/tags/{{tagId}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["tags", "{{tagId}}"]
+        }
+      }
+    },
+    {
+      "name": "POST/Tags (createTag - Errores)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+                "pm.test(\"Dado que intento crear una etiqueta que ya existe, cuando el servidor valida el nombre, entonces el código de estado debe ser 400 (Bad Request)\", function () {",
+                "    pm.response.to.have.status(400);",
+                "});",
+                "pm.test(\"Dado que se rechaza la etiqueta duplicada, cuando recibo el mensaje, entonces debe indicar que ya existe\", function () {",
+                "    const res = pm.response.json();",
+                "    pm.expect(res).to.have.property(\"message\");",
+                "    pm.expect(res.message).to.include(\"ya existe\");",
+                "});"
+            ],
+            "type": "text/javascript"
+            }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"React\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/tags",
+          "host": ["{{BASE_URL}}"],
+          "path": ["tags"]
+        }
+      }
+    }
+  ]
+}

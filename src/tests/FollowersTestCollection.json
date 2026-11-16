@@ -1,0 +1,412 @@
+{
+  "info": {
+    "_postman_id": "f5e6d7c8-9012-3456-7890-followerscollec",
+    "name": "FollowersTestCollection",
+    "description": "Pruebas integrales de EndPoints de Seguidores (Followers/Following) con creación autónoma de usuarios para MongoDB.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "NICKNAME_SEGUIDOR",
+      "value": ""
+    },
+    {
+      "key": "NICKNAME_SEGUIDO",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup - Crear Usuario Seguidor",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que necesito un primer usuario (seguidor), se crea con 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const res = pm.response.json();",
+              "    const nick = (res.user && res.user.nickName) || res.nickName;",
+              "    pm.collectionVariables.set(\"NICKNAME_SEGUIDOR\", nick);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"follower_user_{{$randomInt}}\",\n  \"nombre\": \"Usuario Seguidor\",\n  \"email\": \"follower_{{$randomInt}}@test.com\",\n  \"contraseña\": \"123456\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "0.1 Setup - Crear Usuario a Ser Seguido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que necesito un segundo usuario (seguido), se crea con 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const res = pm.response.json();",
+              "    const nick = (res.user && res.user.nickName) || res.nickName;",
+              "    pm.collectionVariables.set(\"NICKNAME_SEGUIDO\", nick);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"followed_user_{{$randomInt}}\",\n  \"nombre\": \"Usuario Seguido\",\n  \"email\": \"followed_{{$randomInt}}@test.com\",\n  \"contraseña\": \"123456\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users/:nickName/following/:followedNickName (followUser - Error Auto Seguimiento)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const nick = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "pm.variables.set(\"TARGET_SEGUIDOR\", nick);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que un usuario intenta seguirse a sí mismo, responde 400 (Bad Request)\", function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Retorna un mensaje explicativo de error de auto-seguimiento\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.satisfy(res => res.hasOwnProperty('error') || res.hasOwnProperty('message'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_SEGUIDOR}}/following/{{TARGET_SEGUIDOR}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_SEGUIDOR}}", "following", "{{TARGET_SEGUIDOR}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Users/:nickName/following/:followedNickName (followUser)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const seguidor = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "const seguido = pm.collectionVariables.get(\"NICKNAME_SEGUIDO\");",
+              "pm.variables.set(\"TARGET_SEGUIDOR\", seguidor);",
+              "pm.variables.set(\"TARGET_SEGUIDO\", seguido);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un POST a /users/:nickName/following/:followedNickName, responde 201 (Created)\", function () {",
+              "    pm.expect([200, 201]).to.include(pm.response.code);",
+              "});",
+              "",
+              "pm.test(\"Devuelve el mensaje de confirmación de seguimiento\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res).to.satisfy(r => r.hasOwnProperty('message') || r.hasOwnProperty('mensaje'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_SEGUIDOR}}/following/{{TARGET_SEGUIDO}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_SEGUIDOR}}", "following", "{{TARGET_SEGUIDO}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName/followers (getFollowers)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const seguidor = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "const seguido = pm.collectionVariables.get(\"NICKNAME_SEGUIDO\");",
+              "pm.variables.set(\"TARGET_SEGUIDOR\", seguidor);",
+              "pm.variables.set(\"TARGET_SEGUIDO\", seguido);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que consulto /followers del usuario seguido, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Responde con un array que contiene al usuario seguidor\", function () {",
+              "    const followers = pm.response.json();",
+              "    pm.expect(followers).to.be.an(\"array\");",
+              "    const seguidorEsperado = pm.variables.get(\"TARGET_SEGUIDOR\");",
+              "    const existe = followers.some(u => u && (u.nickName === seguidorEsperado || u === seguidorEsperado));",
+              "    pm.expect(existe).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_SEGUIDO}}/followers",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_SEGUIDO}}", "followers"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName/following (getFollowing)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const seguidor = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "const seguido = pm.collectionVariables.get(\"NICKNAME_SEGUIDO\");",
+              "pm.variables.set(\"TARGET_SEGUIDOR\", seguidor);",
+              "pm.variables.set(\"TARGET_SEGUIDO\", seguido);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que consulto /following del usuario seguidor, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Responde con un array que contiene al usuario que se está siguiendo\", function () {",
+              "    const following = pm.response.json();",
+              "    pm.expect(following).to.be.an(\"array\");",
+              "    const seguidoEsperado = pm.variables.get(\"TARGET_SEGUIDO\");",
+              "    const existe = following.some(u => u && (u.nickName === seguidoEsperado || u === seguidoEsperado));",
+              "    pm.expect(existe).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_SEGUIDOR}}/following",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_SEGUIDOR}}", "following"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE/Users/:nickName/following/:followedNickName (unFollowUser)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const seguidor = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "const seguido = pm.collectionVariables.get(\"NICKNAME_SEGUIDO\");",
+              "pm.variables.set(\"TARGET_SEGUIDOR\", seguidor);",
+              "pm.variables.set(\"TARGET_SEGUIDO\", seguido);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un DELETE a /users/:nickName/following/:followedNickName, responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_SEGUIDOR}}/following/{{TARGET_SEGUIDO}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_SEGUIDOR}}", "following", "{{TARGET_SEGUIDO}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Users/:nickName/followers - ERROR Usuario Inexistente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que consulto seguidores de un usuario inexistente, responde 404 (Not Found)\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/usuario_inexistente_99999/followers",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "usuario_inexistente_99999", "followers"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Final - Limpiar Usuario Seguido de prueba",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const nickname = pm.collectionVariables.get(\"NICKNAME_SEGUIDO\");",
+              "pm.variables.set(\"TARGET_NICKNAME\", nickname);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Elimina el usuario seguido creado para los tests\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.collectionVariables.unset(\"NICKNAME_SEGUIDO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_NICKNAME}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_NICKNAME}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Final - Limpiar Usuario Seguidor de prueba",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const nickname = pm.collectionVariables.get(\"NICKNAME_SEGUIDOR\");",
+              "pm.variables.set(\"TARGET_NICKNAME\", nickname);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Elimina el usuario seguidor creado para los tests\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.collectionVariables.unset(\"NICKNAME_SEGUIDOR\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_NICKNAME}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_NICKNAME}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

@@ -1,0 +1,575 @@
+{
+  "info": {
+    "_postman_id": "a8d29b3c-4e5f-4a1b-9c2d-3e4f5a6b7c8d",
+    "name": "CommentsTestCollection",
+    "description": "Pruebas integrales de EndPoints de Comments con creación autónoma de Usuario y Publicación para MongoDB.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "USER_ID_ACTUAL",
+      "value": ""
+    },
+    {
+      "key": "NICKNAME_ACTUAL",
+      "value": ""
+    },
+    {
+      "key": "POST_ID_ACTUAL",
+      "value": ""
+    },
+    {
+      "key": "COMMENT_ID_ACTUAL",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Setup - Crear Usuario de prueba",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que necesito un usuario para los comentarios, se crea con 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const res = pm.response.json();",
+              "    const nick = (res.user && res.user.nickName) || res.nickName;",
+              "    pm.collectionVariables.set(\"NICKNAME_ACTUAL\", nick);",
+              "    ",
+              "    let userId = (res.user && (res.user._id || res.user.id)) || res._id || res.id;",
+              "    if (userId) {",
+              "        pm.collectionVariables.set(\"USER_ID_ACTUAL\", String(userId));",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/users",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nickName\": \"comment_author_{{$randomInt}}\",\n  \"nombre\": \"Creador De Comentarios\",\n  \"email\": \"commenter_{{$randomInt}}@test.com\",\n  \"contraseña\": \"123456\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "0.1 Setup - Obtener ID real del Usuario",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Verificar y obtener el ID del usuario recién creado\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    const res = pm.response.json();",
+              "    const userObj = Array.isArray(res) ? res.find(u => u.nickName === pm.collectionVariables.get(\"NICKNAME_ACTUAL\")) : res;",
+              "    ",
+              "    if (userObj && (userObj._id || userObj.id)) {",
+              "        pm.collectionVariables.set(\"USER_ID_ACTUAL\", String(userObj._id || userObj.id));",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{NICKNAME_ACTUAL}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{NICKNAME_ACTUAL}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "0.2 Setup - Crear Publicación de prueba",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const userId = pm.collectionVariables.get(\"USER_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_USER_ID\", userId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que necesito una publicación para asociar comentarios, se crea con 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    const res = pm.response.json();",
+              "    if (res.post && res.post._id) {",
+              "        pm.collectionVariables.set(\"POST_ID_ACTUAL\", String(res.post._id));",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/posts",
+          "host": ["{{BASE_URL}}"],
+          "path": ["posts"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"descripcion\": \"Publicación contenedora para pruebas de comentarios\",\n  \"userId\": \"{{TARGET_USER_ID}}\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Comments (getComments)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que hago un GET a /comments, cuando la lista responde, el código es 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"El body devuelto debe ser un array de comentarios\", function () {",
+              "    pm.expect(pm.response.json()).to.be.an(\"array\");",
+              "});",
+              "",
+              "pm.test(\"Ningún comentario devuelto debe superar la antigüedad permitida\", function () {",
+              "    const comments = pm.response.json();",
+              "    const mesesConfig = parseInt(pm.variables.get(\"COMMENT_MAX_MONTHS\")) || 6;",
+              "    const limite = new Date();",
+              "    limite.setMonth(limite.getMonth() - mesesConfig);",
+              "    ",
+              "    comments.forEach(comment => {",
+              "        const commentDate = new Date(comment.comentadoEn);",
+              "        pm.expect(commentDate >= limite,",
+              "            `El comentario con ID ${comment._id} supera el límite de antigüedad.`",
+              "        ).to.be.true;",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/comments",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Comments (createComment)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const userId = pm.collectionVariables.get(\"USER_ID_ACTUAL\");",
+              "const postId = pm.collectionVariables.get(\"POST_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_USER_ID\", userId);",
+              "pm.variables.set(\"TARGET_POST_ID\", postId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado que envío datos válidos con usuario y publicación existentes, responde 201 (Created)\", function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test(\"Captura y guarda el ID del comentario recién creado\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res).to.have.property(\"comment\");",
+              "    pm.expect(res.comment).to.have.property(\"_id\");",
+              "    ",
+              "    pm.collectionVariables.set(\"COMMENT_ID_ACTUAL\", res.comment._id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/comments",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contenido\": \"Este es un comentario de prueba en MongoDB\",\n  \"userId\": \"{{TARGET_USER_ID}}\",\n  \"postId\": \"{{TARGET_POST_ID}}\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Comments (createComment - Error Datos Inválidos)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Debe retornar 400 o 404 si el contenido está vacío o si el usuario o la publicación no existen\", function () {",
+              "    pm.expect([400, 404]).to.include(pm.response.code);",
+              "});",
+              "",
+              "pm.test(\"La respuesta contiene mensaje explicativo del error\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.satisfy(res => res.hasOwnProperty('error') || res.hasOwnProperty('message'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/comments",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contenido\": \"   \",\n  \"userId\": \"000000000000000000000000\",\n  \"postId\": \"000000000000000000000000\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET/Comments/:id (getCommentById)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const commentId = pm.collectionVariables.get(\"COMMENT_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_COMMENT_ID\", commentId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un ID existente, GET /comments/:id responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Devuelve la información del comentario solicitado\", function () {",
+              "    const comment = pm.response.json();",
+              "    const commentIdEsperado = pm.variables.get(\"TARGET_COMMENT_ID\");",
+              "    pm.expect(comment._id).to.equal(commentIdEsperado);",
+              "    pm.expect(comment).to.have.property(\"contenido\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/comments/{{TARGET_COMMENT_ID}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments", "{{TARGET_COMMENT_ID}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "PATCH/Comments/:id (updateCommentContent)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const commentId = pm.collectionVariables.get(\"COMMENT_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_COMMENT_ID\", commentId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un comentario existente, cuando se hace un PATCH /comments/:id , entonces se actualiza y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Refleja el nuevo texto del comentario en la respuesta\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.expect(res.comment.contenido).to.equal(\"Este es el contenido del comentario actualizado\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{BASE_URL}}/comments/{{TARGET_COMMENT_ID}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments", "{{TARGET_COMMENT_ID}}"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contenido\": \"Este es el contenido del comentario actualizado\"\n}"
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "DELETE/Comments/:id (deleteComment)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const commentId = pm.collectionVariables.get(\"COMMENT_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_COMMENT_ID\", commentId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Dado un comentario existente, cuando se hace un DELETE /comments/:id, entonces el comentario ya no existe y responde 200 (OK)\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Limpia la variable del comentario eliminado\", function () {",
+              "    pm.collectionVariables.unset(\"COMMENT_ID_ACTUAL\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/comments/{{TARGET_COMMENT_ID}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments", "{{TARGET_COMMENT_ID}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST/Comments (createComment - Reciente)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"El comentario reciente se crea correctamente\", function () {",
+              "    const res = pm.response.json();",
+              "    pm.response.to.have.status(201);",
+              "    pm.expect(res).to.have.property(\"comment\");",
+              "    pm.expect(res.comment).to.have.property(\"_id\");",
+              "    pm.expect(res.comment).to.have.property(\"contenido\");",
+              "    pm.expect(res.comment.contenido).to.equal(\"Este es un comentario reciente de prueba\");",
+              "    pm.collectionVariables.set(\"RECENT_COMMENT_ID\", res.comment._id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"contenido\": \"Este es un comentario reciente de prueba\",\n  \"userId\": \"{{USER_ID_ACTUAL}}\",\n  \"postId\": \"{{POST_ID_ACTUAL}}\"\n}"
+        },
+        "url": {
+          "raw": "{{BASE_URL}}/comments",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments"]
+        }
+      }
+    },
+    {
+      "name": "GET/Comments/:id - ERROR Comentario Inexistente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Responde 404 Not Found cuando el ID de comentario no existe o no está visible\", function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test(\"Respuesta contiene mensaje explicativo de visibilidad\", function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.eql(\"Comentario no encontrado o no visible\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/comments/000000000000000000000000",
+          "host": ["{{BASE_URL}}"],
+          "path": ["comments", "000000000000000000000000"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Final - Limpiar Publicación de prueba",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const postId = pm.collectionVariables.get(\"POST_ID_ACTUAL\");",
+              "pm.variables.set(\"TARGET_POST_ID\", postId);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Elimina la publicación de prueba creada para los tests\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.collectionVariables.unset(\"POST_ID_ACTUAL\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/posts/{{TARGET_POST_ID}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["posts", "{{TARGET_POST_ID}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Final - Limpiar Usuario de prueba",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const nickname = pm.collectionVariables.get(\"NICKNAME_ACTUAL\");",
+              "pm.variables.set(\"TARGET_USER_NICKNAME\", nickname);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Elimina el usuario de prueba creado inicialmente\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.collectionVariables.unset(\"USER_ID_ACTUAL\");",
+              "    pm.collectionVariables.unset(\"NICKNAME_ACTUAL\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{BASE_URL}}/users/{{TARGET_USER_NICKNAME}}",
+          "host": ["{{BASE_URL}}"],
+          "path": ["users", "{{TARGET_USER_NICKNAME}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
