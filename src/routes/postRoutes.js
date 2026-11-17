@@ -12,7 +12,7 @@ router.get('/', postController.getPosts); // obtener todos los posts
 
 router.get('/:id', validateIdPostParam, validatePostExistence, postController.getPostById); // obtener un post por id validando parametro y existencia
 
-router.get('/:postId/comments', validateIdPostParam, validatePostExistence, commentController.getCommentsByPostId); // obtener comentarios visibles de una publicación
+router.get('/:id/comments', validateIdPostParam, validatePostExistence, commentController.getCommentsByPostId); // obtener comentarios visibles de una publicación
 
 router.post('/', handleUpload, validateCreatePost, postController.createPost); // crear un post recibiendo hasta 5 archivos en el campo 'imagenes' (soporte híbrido (JSON y Multipart/form-data))
 

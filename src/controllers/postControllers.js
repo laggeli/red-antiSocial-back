@@ -72,7 +72,7 @@ const getPostById = async (req, res) => {
       comentadoEn: { $gte: limite },
     })
       .select('_id contenido userId postId comentadoEn')
-      .populate('userId', 'nickName nombre -_id')
+      .populate('userId', 'nickName nombre fotoPerfil')
       .sort({ comentadoEn: -1 });
 
     // Pasamos el documento a objeto para agregarle el array de comentarios.
