@@ -130,9 +130,11 @@ Durante la migración a MongoDB se evaluó cada entidad para decidir si convení
 
     Colección independiente.
 
-    El usuario conserva los atributos principales del dominio: nickName, nombre, email y contraseña. Mongoose genera automáticamente el campo _id.
+    El usuario conserva los atributos principales del dominio: nickName, nombre, email, fotoPerfil y contraseña. Mongoose genera automáticamente el campo _id.
 
     El nickName y el email poseen restricciones de unicidad mediante índices únicos, evitando la creación de usuarios con identificadores o correos electrónicos repetidos.
+
+    La foto de perfil contiene su propia URL y puede representar tanto un archivo almacenado localmente en el servidor como una dirección externa.
 
     Las publicaciones, comentarios y relaciones de seguimiento se almacenan en colecciones independientes y se vinculan mediante referencias. De esta manera se evita que el documento del usuario crezca indefinidamente a medida que aumenta su actividad dentro de la red social.
 
