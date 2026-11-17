@@ -8,8 +8,7 @@ const { validateIdPostParam } = require('../middlewares/validateIdPostParam');
 const { validatePatchPost } = require('../middlewares/validatePatchPost');
 const { validatePostExistence } = require('../middlewares/validatePostExistence');
 
-
-router.get('/:nickName', postController.getPosts); // obtener todos los posts
+router.get('/', postController.getPosts); // obtener todos los posts
 
 router.get('/:id', validateIdPostParam, validatePostExistence, postController.getPostById); // obtener un post por id validando parametro y existencia
 
