@@ -11,7 +11,7 @@ const getComments = async (req, res) => {
         const comments = await Comment.find()
             .select("_id contenido userId postId comentadoEn")
             .populate("postId", "descripcion")
-            .populate("userId", "nickName")
+            .populate("userId", "nickName nombre fotoPerfil")
             .where("comentadoEn").gte(limite);
 
         // 200 OK para consultas exitosas
@@ -38,13 +38,11 @@ const getCommentById = async (req, res) => {
         })
         .select("_id contenido userId postId comentadoEn")
         .populate("postId", "descripcion")
-        .populate("userId", "nickName");
+        .populate("userId", "nickName nombre fotoPerfil");
 
         if (!comment) {
             // 404 Not Found cuando el recurso no existe
-            return res.status(404).json({ 
-                message: 'Comentario no encontrado o no visible'
-            });
+            return res.status(404).json({ message: 'Comentario no encontrado o no visible' });
         }
 
         res.status(200).json(comment);
@@ -67,7 +65,7 @@ const getCommentsByPostId = async (req, res) => {
     // buscar los comentarios del post posteriores o iguales a la fecha límite
     const comments = await Comment.find({ postId, comentadoEn: { $gte: limite } })
       .select("_id contenido userId postId comentadoEn")
-      .populate("userId", "nickName nombre -_id")
+      .populate("userId", "nickName nombre fotoPerfil")
       .sort({ comentadoEn: -1 }); // Ordenar del más reciente al más antiguo
 
     return res.status(200).json(comments);
