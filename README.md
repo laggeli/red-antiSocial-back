@@ -281,7 +281,7 @@ Para comprobar que estén funcionando:
 
     docker ps
 
-Entre los contenedores activos debe aparecer redis_unahur.
+Entre los contenedores activos debe aparecer redis_unahur_ciu.
 
 ### 2. Iniciar el backend
 
@@ -299,7 +299,7 @@ Esta petición permite que el backend consulte las publicaciones y almacene el r
 
 Para ingresar a la consola de Redis, ejecutar:
 
-    docker exec -it redis_unahur redis-cli
+    docker exec -it redis_unahur_ciu redis-cli
 
 Una vez dentro, se pueden utilizar los siguientes comandos:
 

@@ -5,13 +5,16 @@ const validateUserExistence = require('../middlewares/validateUserExistence');
 const validateUserUpdate = require('../middlewares/validateUserUpdate');
 const validateFollowUsers = require('../middlewares/validateFollowUsers');
 const validateNotSelfFollow = require('../middlewares/validateNotSelfFollow');
+const handleProfilePhotoUpload = require('../middlewares/handleProfilePhotoUpload');
+const setProfilePhotoPath = require('../middlewares/setProfilePhotoPath');
+
 const router = Router();
 
 // usuarios
 router.get("/", userControllers.getUsers); // obtener todos los usuarios
 router.get("/:nickName", validateUserExistence, userControllers.getUser); // obtener un usuario por su nickName
 router.post("/", validateUser, userControllers.createUser); // crear un usuario
-router.patch("/:nickName", validateUserExistence, validateUserUpdate, userControllers.updateUser); // actualizar un usuario
+router.patch("/:nickName", validateUserExistence, handleProfilePhotoUpload, setProfilePhotoPath, validateUserUpdate, userControllers.updateUser); // actualizar un usuario
 router.delete("/:nickName", validateUserExistence, userControllers.deleteUser); // borrar un usuario
 
 // followers :p

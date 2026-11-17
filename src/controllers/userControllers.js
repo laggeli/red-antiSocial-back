@@ -1,150 +1,283 @@
-const User = require('../models/User'); 
-const Post = require('../models/Post'); 
-const Comment = require('../models/Comment'); 
+const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
 const Follower = require('../models/Follower');
-const fs = require('fs'); 
+const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { redisClient } = require('../config/redis');
 
-// controllers de users
-const getUsers = async (req, res) => { // obtener todos los usuarios
-    try {
-        const users = await User.find().select("nickName nombre email");
-        res.status(200).json(users);
-    } catch (error) { res.status(500).json({ message: "Error al obtener los usuarios", error: error.message }); }
-};
+const datosPublicosUsuario = '_id nickName nombre email fotoPerfil';
 
-const getUser = async (req, res) => { // obtener un usuario por su nickName
-    try { res.status(200).json(req.user); } 
-    catch (error) { res.status(500).json({ message: "Error al obtener el usuario", error: error.message }); }
-}
+const eliminarFotoLocal = async (url) => {
+  if (!url || !url.startsWith('/uploads/')) return;
 
-const createUser = async (req, res) => { // crear un usuario
-    try {
-        const { nickName, nombre, email, contraseña } = req.body;
-        const contraseñaHash = await bcrypt.hash(contraseña, 10);
-        const user = await User.create({ nickName, nombre, email, contraseña: contraseñaHash });
-        res.status(201).json({ 
-            message: "Usuario creado éxitosamente", 
-            user: { nickName: user.nickName, email: user.email, nombre: user.nombre } 
-        });
-    } catch (error) {
-        if (error.code === 11000) { return res.status(409).json({ error: "El nickName o Email ya está en uso" }); }
-        res.status(500).json({ message: "Error al crear el usuario", error: error.message });
-    }
-};
+  const ruta = path.join(__dirname, '../public', url);
 
-const updateUser = async (req, res) => { // actualizar un usuario
-    try {
-        const { nickName } = req.params;
-        const datosActualizados = { ...req.body };
-        if (datosActualizados.contraseña) { datosActualizados.contraseña = await bcrypt.hash(datosActualizados.contraseña, 10); }
-        const user = await User.findOneAndUpdate( { nickName }, datosActualizados, { new: true, runValidators: true });
-        
-        await redisClient.del('posts:all');
-        res.status(200).json({ message: "Usuario actualizado con éxito", user });
-    } catch (error) { res.status(400).json({ message: "Error al actualizar usuario", error: error.message });
+  try {
+    await fs.promises.unlink(ruta);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
   }
 };
 
-// eliminar usuario y toda su información vinculada en cascada
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.find().select(datosPublicosUsuario);
+
+    return res.status(200).json(users);
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al obtener los usuarios',
+      error: error.message,
+    });
+  }
+};
+
+const getUser = async (req, res) => {
+  try {
+    return res.status(200).json(req.user);
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al obtener el usuario',
+      error: error.message,
+    });
+  }
+};
+
+const createUser = async (req, res) => {
+  try {
+    const { nickName, nombre, email, contraseña } = req.body;
+
+    const contraseñaHash = await bcrypt.hash(contraseña, 10);
+
+    const user = await User.create({
+      nickName,
+      nombre,
+      email,
+      contraseña: contraseñaHash,
+    });
+
+    return res.status(201).json({
+      message: 'Usuario creado exitosamente',
+      user: {
+        _id: user._id,
+        nickName: user.nickName,
+        nombre: user.nombre,
+        email: user.email,
+        fotoPerfil: user.fotoPerfil || '',
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: 'El nickName o Email ya está en uso',
+      });
+    }
+
+    return res.status(500).json({
+      message: 'Error al crear el usuario',
+      error: error.message,
+    });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const usuarioAnterior = req.user;
+    const datosActualizados = { ...req.body };
+
+    if (datosActualizados.contraseña) {
+      datosActualizados.contraseña = await bcrypt.hash(
+        datosActualizados.contraseña,
+        10
+      );
+    }
+
+    const user = await User.findByIdAndUpdate(
+      usuarioAnterior._id,
+      { $set: datosActualizados },
+      { new: true, runValidators: true }
+    ).select(datosPublicosUsuario);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'Usuario no encontrado',
+      });
+    }
+
+    // Si se subió una foto nueva, eliminamos la anterior.
+    if (req.file && usuarioAnterior.fotoPerfil !== user.fotoPerfil) {
+      await eliminarFotoLocal(usuarioAnterior.fotoPerfil);
+    }
+
+    await redisClient.del('posts:all');
+
+    return res.status(200).json({
+      message: 'Usuario actualizado con éxito',
+      user,
+    });
+  } catch (error) {
+    // Si hubo un error, eliminamos la foto que se acababa de subir.
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      try {
+        await fs.promises.unlink(req.file.path);
+      } catch (_) {}
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: 'El nickName o email ya está en uso',
+      });
+    }
+
+    return res.status(400).json({
+      message: 'Error al actualizar usuario',
+      error: error.message,
+    });
+  }
+};
+
 const deleteUser = async (req, res) => {
   try {
     const user = req.user;
     const userId = user._id;
 
     const postsDelUsuario = await Post.find({ userId }).select('_id imagenes');
-    const postIds = postsDelUsuario.map(post => post._id);
+    const postIds = postsDelUsuario.map((post) => post._id);
 
+    // Eliminamos las imágenes de las publicaciones.
     for (const post of postsDelUsuario) {
       for (const img of post.imagenes) {
-        if (img.url && img.url.startsWith('/uploads/')) {
-
-          const rutaArchivo = path.resolve(__dirname, '../public', `.${img.url}`);
-
-          try { await fs.promises.unlink(rutaArchivo); } 
-          catch (error) { if (error.code !== 'ENOENT') { throw error; } }
-        }
+        await eliminarFotoLocal(img.url);
       }
     }
-    await Comment.deleteMany({ // borras comentarios del usuaroi
+
+    // Eliminamos la foto de perfil.
+    await eliminarFotoLocal(user.fotoPerfil);
+
+    // Eliminamos comentarios propios y comentarios de sus publicaciones.
+    await Comment.deleteMany({
       $or: [
-        { userId: userId },
-        { postId: { $in: postIds } }
-      ]
+        { userId },
+        { postId: { $in: postIds } },
+      ],
     });
 
-    await Follower.deleteMany({ // borras seguidores y seguidos del usuario
+    // Eliminamos sus relaciones de seguidores.
+    await Follower.deleteMany({
       $or: [
         { followerId: userId },
-        { followedId: userId }
-      ]
+        { followedId: userId },
+      ],
     });
 
-    await Post.deleteMany({ userId }); // borras los posteos
+    await Post.deleteMany({ userId });
 
-    await User.deleteOne({ _id: userId }); // borras el usuario a lo ultimo
+    await User.deleteOne({ _id: userId });
 
     await redisClient.del('posts:all');
-    
-    return res.status(200).json({
-      mensaje: `Usuario @${user.nickName} y toda su información asociada fueron eliminados exitosamente`
-    });
 
+    return res.status(200).json({
+      message: `Usuario @${user.nickName} y su información asociada fueron eliminados exitosamente`,
+    });
   } catch (error) {
-    console.error("=== ERROR AL ELIMINAR USUARIO ===", error);
+    console.error('=== ERROR AL ELIMINAR USUARIO ===', error);
+
     return res.status(500).json({
       error: 'Error al eliminar el usuario',
-      detalle: error.message
+      detalle: error.message,
     });
   }
 };
 
-// controllers de followers
-const getFollowers = async (req, res) => { // obtener todos los seguidores de un usuario
-    try {
-        const followers = await Follower.find({ followedId: req.user._id }).populate("followerId", "nickName nombre email");
-        res.status(200).json( followers.map(relacion => relacion.followerId) );
-    } catch (error) { res.status(500).json({ message: "Error al obtener los seguidores", error: error.message }); }
-}
+const getFollowers = async (req, res) => {
+  try {
+    const followers = await Follower.find({
+      followedId: req.user._id,
+    }).populate('followerId', datosPublicosUsuario);
 
-const getFollowing = async (req, res) => { // obtener todos los seguidos de un usuario
-    try {
-        const following = await Follower.find({ followerId: req.user._id }).populate("followedId", "nickName nombre email");
+    return res.status(200).json(
+      followers.map((relacion) => relacion.followerId)
+    );
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al obtener los seguidores',
+      error: error.message,
+    });
+  }
+};
 
-        res.status(200).json( following.map(relacion => relacion.followedId) );
-    } catch (error) { res.status(500).json({ message: "Error al obtener los usuarios seguidos", error: error.message }); }
-}
+const getFollowing = async (req, res) => {
+  try {
+    const following = await Follower.find({
+      followerId: req.user._id,
+    }).populate('followedId', datosPublicosUsuario);
 
-const followUser = async (req, res) => { // seguir a un usuario
-    try {
-        const { nickName, followedNickName } = req.params;
-        const follower = await User.findOne({ nickName });
-        const followed = await User.findOne({ nickName: followedNickName });
+    return res.status(200).json(
+      following.map((relacion) => relacion.followedId)
+    );
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al obtener los usuarios seguidos',
+      error: error.message,
+    });
+  }
+};
 
-        await Follower.create({ followerId: follower._id, followedId: followed._id });
-        res.status(201).json({ message: `El usuario ${nickName} ahora sigue a ${followedNickName}` });
-    } catch (error) {
-        if (error.code === 11000) { return res.status(409).json({ message: "Ya sigue a este usuario" }); }
-        res.status(500).json({ message: "Error al seguir al usuario", error: error.message });
+const followUser = async (req, res) => {
+  try {
+    const { follower, followed } = req;
+
+    await Follower.create({
+      followerId: follower._id,
+      followedId: followed._id,
+    });
+
+    return res.status(201).json({
+      message: `El usuario ${follower.nickName} ahora sigue a ${followed.nickName}`,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: 'Ya sigue a este usuario',
+      });
     }
-}
 
-const unFollowUser = async (req, res) => { // dejar de seguir a un usuario
-    try {
-        const { nickName, followedNickName } = req.params;
-        const follower = await User.findOne({ nickName });
-        const followed = await User.findOne({ nickName: followedNickName });
-        const relation = await Follower.findOneAndDelete({ followerId: follower._id, followedId: followed._id });
+    return res.status(500).json({
+      message: 'Error al seguir al usuario',
+      error: error.message,
+    });
+  }
+};
 
-        if (!relation) { return res.status(404).json({ message: "No sigue a este usuario" }); }
+const unFollowUser = async (req, res) => {
+  try {
+    const { follower, followed } = req;
 
-        res.status(200).json({ message: `El usuario ${nickName} dejó de seguir a ${followedNickName}` });
-    } catch (error) { res.status(500).json({ message: "Error al dejar de seguir al usuario", error: error.message }); }
-}
+    const relation = await Follower.findOneAndDelete({
+      followerId: follower._id,
+      followedId: followed._id,
+    });
 
-module.exports = { 
-    getUsers, getUser, createUser, updateUser, deleteUser,
-    getFollowers, getFollowing, followUser, unFollowUser
-}
+    if (!relation) {
+      return res.status(404).json({
+        message: 'No sigue a este usuario',
+      });
+    }
+
+    return res.status(200).json({
+      message: `El usuario ${follower.nickName} dejó de seguir a ${followed.nickName}`,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Error al dejar de seguir al usuario',
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  getUsers, getUser, createUser, updateUser, deleteUser,
+  getFollowers, getFollowing, followUser, unFollowUser,
+};

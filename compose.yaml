@@ -18,7 +18,7 @@ services:
   
   redis: 
     image: redis:alpine 
-    container_name: redis_unahur 
+    container_name: redis_unahur_ciu 
     ports: 
       - "6379:6379"
 
