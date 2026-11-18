@@ -16,7 +16,18 @@ const tagRoutes = require('./routes/tagRoutes');
 const postRoutes = require('./routes/postRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+const origenesPermitidos = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({origin: (origin, callback) => {
+      // permite herramientas como Postman y solicitudes sin origin.
+      if (!origin || origenesPermitidos.includes(origin)) { return callback(null, true); }
+      return callback(new Error("Origen no permitido por CORS"));
+    },
+  })
+);
 
 app.use(express.json());
 

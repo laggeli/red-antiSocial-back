@@ -1,3 +1,4 @@
+
 require("dotenv").config();
 
 const mongoose = require("mongoose");
@@ -31,6 +32,13 @@ const imagenesLocales = {
     destino: "seed-ichigo.jpg",
     url: "/uploads/seed-ichigo.jpg",
   },
+  orihime: {
+    origen: path.join(
+      carpetaUploads,
+      "OrihimeInoue.jpg"
+    ),
+    url: "/uploads/OrihimeInoue.jpg",
+  },
 };
 
 const usuariosDemo = [
@@ -48,31 +56,48 @@ const usuariosDemo = [
     contraseña: "123456",
     fotoPerfil: imagenesLocales.rukia.url,
   },
+  {
+    nickName: "orihime",
+    nombre: "Orihime Inoue",
+    email: "OrihimeIno@gmail.com",
+    contraseña: "bleach123",
+    fotoPerfil: imagenesLocales.orihime.url,
+  },
 ];
 
 const copiarImagenes = () => {
   fs.mkdirSync(carpetaUploads, { recursive: true });
 
-  Object.values(imagenesLocales).forEach((imagen) => {
-    if (!fs.existsSync(imagen.origen)) {
-      throw new Error(
-        `No se encontró la imagen: ${imagen.origen}`
+  // Rukia e Ichigo se copian desde seed/assets.
+  [imagenesLocales.rukia, imagenesLocales.ichigo].forEach(
+    (imagen) => {
+      if (!fs.existsSync(imagen.origen)) {
+        throw new Error(
+          `No se encontró la imagen: ${imagen.origen}`
+        );
+      }
+
+      fs.copyFileSync(
+        imagen.origen,
+        path.join(carpetaUploads, imagen.destino)
       );
     }
+  );
 
-    fs.copyFileSync(
-      imagen.origen,
-      path.join(carpetaUploads, imagen.destino)
+  // Orihime ya debe estar en public/uploads.
+  if (!fs.existsSync(imagenesLocales.orihime.origen)) {
+    throw new Error(
+      "No se encontró OrihimeInoue.jpg dentro de src/public/uploads."
     );
-  });
+  }
 
-  console.log("Imágenes de ejemplo copiadas.");
+  console.log("Imágenes de ejemplo verificadas.");
 };
 
 const obtenerUsuario = async (datos) => {
   let usuario = await User.findOne({
     nickName: datos.nickName,
-  }).select("+contraseña");
+  });
 
   if (!usuario) {
     const contraseñaHash = await bcrypt.hash(
@@ -85,6 +110,8 @@ const obtenerUsuario = async (datos) => {
       contraseña: contraseñaHash,
     });
   } else {
+    // Actualizamos los datos públicos, pero no cambiamos
+    // la contraseña de una cuenta que ya existía.
     usuario.nombre = datos.nombre;
     usuario.email = datos.email;
     usuario.fotoPerfil = datos.fotoPerfil;
@@ -114,7 +141,7 @@ const crearPublicacion = async (
     nombresTags.map((nombre) => obtenerTag(nombre))
   );
 
-  return await Post.create({
+  return Post.create({
     descripcion,
     userId: usuario._id,
     tagIds: tags.map((tag) => tag._id),
@@ -128,7 +155,7 @@ const crearComentario = async (
   publicacion,
   contenido
 ) => {
-  return await Comment.create({
+  return Comment.create({
     contenido,
     userId: usuario._id,
     postId: publicacion._id,
@@ -139,10 +166,14 @@ const crearComentario = async (
 const crearSeed = async () => {
   try {
     const mongoURI =
-      process.env.MONGO_URI_DEV || process.env.MONGO_URI;
+      process.env.MONGO_URI_DEV ||
+      process.env.MONGO_URI ||
+      process.env.MONGO_URI_PROD;
 
     if (!mongoURI) {
-      throw new Error("No se encontró la URI de MongoDB.");
+      throw new Error(
+        "No se encontró una variable de conexión a MongoDB."
+      );
     }
 
     await mongoose.connect(mongoURI);
@@ -150,49 +181,60 @@ const crearSeed = async () => {
 
     copiarImagenes();
 
+    // Crear o recuperar las tres cuentas.
     const ichigo = await obtenerUsuario(usuariosDemo[0]);
     const rukia = await obtenerUsuario(usuariosDemo[1]);
+    const orihime = await obtenerUsuario(usuariosDemo[2]);
 
-    const idsUsuarios = [ichigo._id, rukia._id];
+    const usuariosIds = [
+      ichigo._id,
+      rukia._id,
+      orihime._id,
+    ];
 
+    // Identificar las publicaciones anteriores de estas cuentas.
     const publicacionesAnteriores = await Post.find({
-      userId: { $in: idsUsuarios },
+      userId: { $in: usuariosIds },
     }).select("_id");
 
-    const idsPublicaciones = publicacionesAnteriores.map(
+    const publicacionesIds = publicacionesAnteriores.map(
       (post) => post._id
     );
 
+    // Borrar solamente comentarios de las publicaciones
+    // de ejemplo. No toca comentarios en publicaciones ajenas.
     await Comment.deleteMany({
-      $or: [
-        { userId: { $in: idsUsuarios } },
-        { postId: { $in: idsPublicaciones } },
-      ],
+      postId: { $in: publicacionesIds },
     });
 
     await Post.deleteMany({
-      userId: { $in: idsUsuarios },
+      userId: { $in: usuariosIds },
     });
 
+    // Reiniciar las relaciones de seguimiento de las cuentas demo.
     await Follower.deleteMany({
       $or: [
-        { followerId: { $in: idsUsuarios } },
-        { followedId: { $in: idsUsuarios } },
+        { followerId: { $in: usuariosIds } },
+        { followedId: { $in: usuariosIds } },
       ],
     });
+
+    // -------------------------
+    // PUBLICACIONES DE RUKIA
+    // -------------------------
 
     const rukiaPost1 = await crearPublicacion(
       rukia,
       "Primer posteo de Rukia de River"
     );
 
-    const rukiaPost2 = await crearPublicacion(
+    await crearPublicacion(
       rukia,
       "hola !!!",
       ["rukia", "bleach"]
     );
 
-    const rukiaPost3 = await crearPublicacion(
+    await crearPublicacion(
       rukia,
       ":3",
       ["rukia", "bleach"],
@@ -208,6 +250,10 @@ const crearSeed = async () => {
       [imagenesLocales.rukia.url]
     );
 
+    // -------------------------
+    // PUBLICACIÓN DE ICHIGO
+    // -------------------------
+
     const ichigoPost1 = await crearPublicacion(
       ichigo,
       "02:42",
@@ -216,6 +262,43 @@ const crearSeed = async () => {
         "https://i.pinimg.com/736x/1c/01/dc/1c01dc14188cfe9377f0394ee74ab3db.jpg",
       ]
     );
+
+    // -------------------------
+    // PUBLICACIONES DE ORIHIME
+    // -------------------------
+
+    const orihimePost1 = await crearPublicacion(
+      orihime,
+      "hace frío",
+      ["bleach", "orihime"],
+      [
+        "https://i.pinimg.com/1200x/33/19/45/33194598b4f4c963107d32a17388d9b5.jpg",
+      ]
+    );
+
+    const orihimePost2 = await crearPublicacion(
+      orihime,
+      "zzzzzz",
+      ["bleach", "orihime"],
+      [
+        "https://i.pinimg.com/736x/2d/46/d5/2d46d5b3db6a00e61500a2da7fb75ff1.jpg",
+      ]
+    );
+
+    const orihimePost3 = await crearPublicacion(
+      orihime,
+      "photoshoot !!! :)",
+      ["bleach", "rukia", "ichigo", "orihime"],
+      [
+        "https://i.pinimg.com/736x/09/52/98/0952986ce3df5e7603ee999c63057803.jpg",
+        "https://i.pinimg.com/736x/61/b8/24/61b824cf5825fae965354c68513c03cf.jpg",
+        "https://i.pinimg.com/736x/08/20/07/082007c5b61197507c57064e6203fffc.jpg",
+      ]
+    );
+
+    // -------------------------
+    // COMENTARIOS DE RUKIA E ICHIGO
+    // -------------------------
 
     await crearComentario(rukia, rukiaPost1, "hola");
 
@@ -237,7 +320,45 @@ const crearSeed = async () => {
       "obviooo!!!"
     );
 
-    // Seguimiento mutuo.
+    // -------------------------
+    // COMENTARIOS DE ORIHIME
+    // -------------------------
+
+    await crearComentario(
+      ichigo,
+      orihimePost1,
+      "🥶❄️"
+    );
+
+    await crearComentario(
+      rukia,
+      orihimePost1,
+      "aguante el invierno"
+    );
+
+    await crearComentario(
+      ichigo,
+      orihimePost2,
+      "anda a dormir"
+    );
+
+    await crearComentario(
+      ichigo,
+      orihimePost3,
+      "🧡🧡🧡🧡"
+    );
+
+    await crearComentario(
+      rukia,
+      orihimePost3,
+      "૮ ˶ᵔ ᵕ ᵔ˶ ა"
+    );
+
+    // -------------------------
+    // SEGUIMIENTO MUTUO
+    // ICHIGO <-> RUKIA
+    // -------------------------
+
     await Follower.create([
       {
         followerId: ichigo._id,
@@ -251,10 +372,11 @@ const crearSeed = async () => {
 
     console.log("--------------------------------");
     console.log("Seed completado correctamente.");
-    console.log("Usuarios: ichigo y rukiaa");
-    console.log("Publicaciones: 5");
-    console.log("Comentarios: 4");
-    console.log("Seguimiento mutuo: creado");
+    console.log("Usuarios: 3");
+    console.log("Publicaciones: 8");
+    console.log("Comentarios: 9");
+    console.log("Etiquetas: creadas o reutilizadas");
+    console.log("Seguimiento mutuo: Ichigo y Rukia");
     console.log("--------------------------------");
   } catch (error) {
     console.error("Error al ejecutar el seed:", error);
