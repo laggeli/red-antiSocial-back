@@ -196,11 +196,13 @@ const crearSeed = async () => {
     const ichigo = await obtenerUsuario(usuariosDemo[0]);
     const rukia = await obtenerUsuario(usuariosDemo[1]);
     const orihime = await obtenerUsuario(usuariosDemo[2]);
+    const aizen = await obtenerUsuario(usuariosDemo[3]);
 
     const usuariosIds = [
       ichigo._id,
       rukia._id,
       orihime._id,
+      aizen._id,
     ];
 
     const publicacionesAnteriores = await Post.find({
@@ -225,16 +227,11 @@ const crearSeed = async () => {
       ],
     });
 
-    const rukiaPost1 = await crearPublicacion(
-      rukia,
+    const rukiaPost1 = await crearPublicacion(rukia,
       "Primer posteo de Rukia de River"
     );
 
-    await crearPublicacion(
-      rukia,
-      "hola !!!",
-      ["rukia", "bleach"]
-    );
+    await crearPublicacion(rukia, "hola !!!", ["rukia", "bleach"]);
 
     await crearPublicacion(
       rukia,
@@ -291,7 +288,7 @@ const crearSeed = async () => {
     );
 
     const aizenPost1 = await crearPublicacion(
-      orihime,
+      aizen,
       "turquía",
       ["turco", "turkey", "aizen", "bleach"],
       [
@@ -301,8 +298,8 @@ const crearSeed = async () => {
       ]
     );
 
-    const aizenPost2 = await crearPublicacion(
-      orihime,
+    await crearPublicacion(
+      aizen,
       "tirando rostro",
       ["aizen", "bleach"],
       [
@@ -312,7 +309,7 @@ const crearSeed = async () => {
     );
 
     const aizenPost3 = await crearPublicacion(
-      orihime,
+      aizen,
       "me caso ",
       ["love", "aizen", "bleach"],
       [
@@ -339,9 +336,9 @@ const crearSeed = async () => {
     await crearComentario(rukia, aizenPost1, "☭");
     await crearComentario(orihime, aizenPost1, "qué loco");
 
-    await crearComentario(ichigo, aizenPost2, "🥂" );
-    await crearComentario(rukia, aizenPost2, "con un hombre o con una mujer?");
-    await crearComentario(orihime, aizenPost2, "🤵🏻👰🏻");
+    await crearComentario(ichigo, aizenPost3, "🥂" );
+    await crearComentario(rukia, aizenPost3, "con un hombre o con una mujer?");
+    await crearComentario(orihime, aizenPost3, "🤵🏻👰🏻");
 
     await Follower.create([
       {
