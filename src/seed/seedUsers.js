@@ -37,8 +37,17 @@ const imagenesLocales = {
       carpetaUploads,
       "OrihimeInoue.jpg"
     ),
+    destino: "seed-orihime.jpg",
     url: "/uploads/OrihimeInoue.jpg",
   },
+  aizen: {
+    origen: path.join(
+      carpetaUploads,
+      "AizenIcon.jpg"
+    ),
+    destino: "seed-aizen.jpg",
+    url: "/uploads/AizenIcon.jpg",
+  }
 };
 
 const usuariosDemo = [
@@ -63,6 +72,13 @@ const usuariosDemo = [
     contraseña: "orihimeBleach21",
     fotoPerfil: imagenesLocales.orihime.url,
   },
+  {
+    nickName: "aizen",
+    nombre: "Sōsuke Aizen",
+    email: "aizenSosuke@gmail.com",
+    contraseña: "aizenBleach33",
+    fotoPerfil: imagenesLocales.aizen.url,
+  }
 ];
 
 const copiarImagenes = () => {
@@ -274,56 +290,58 @@ const crearSeed = async () => {
       ]
     );
 
+    const aizenPost1 = await crearPublicacion(
+      orihime,
+      "turquía",
+      ["turco", "turkey", "aizen", "bleach"],
+      [
+        "https://i.pinimg.com/736x/c5/df/78/c5df78124ac2e14cd8257eb7135bceff.jpg",
+        "https://i.pinimg.com/736x/eb/9e/c4/eb9ec40aa6f8bacbdcc41504f82748f5.jpg",
+        "https://i.pinimg.com/736x/c7/be/5a/c7be5a7d8357bc6ecf70d7fc467b4fc0.jpg",
+      ]
+    );
+
+    const aizenPost2 = await crearPublicacion(
+      orihime,
+      "tirando rostro",
+      ["aizen", "bleach"],
+      [
+        "https://i.pinimg.com/736x/e7/95/55/e79555e7945fa2e14bd00eaa9a61fe57.jpg",
+        "https://i.pinimg.com/736x/38/8c/f9/388cf91d9a5e13825c4b3114761688ba.jpg"
+      ]
+    );
+
+    const aizenPost3 = await crearPublicacion(
+      orihime,
+      "me caso ",
+      ["love", "aizen", "bleach"],
+      [
+        "https://i.pinimg.com/736x/87/0e/26/870e267e7dd24f421f23f60481294dcf.jpg"
+      ]
+    );
+
     await crearComentario(rukia, rukiaPost1, "hola");
 
-    await crearComentario(
-      rukia,
-      ichigoPost1,
-      "hola :p"
-    );
+    await crearComentario( rukia, ichigoPost1, "hola :p" );
 
-    await crearComentario(
-      ichigo,
-      rukiaPost4,
-      "aguante river"
-    );
+    await crearComentario(ichigo, rukiaPost4, "aguante river" );
+    await crearComentario(rukia, rukiaPost4, "obviooo!!!" );
 
-    await crearComentario(
-      rukia,
-      rukiaPost4,
-      "obviooo!!!"
-    );
+    await crearComentario(ichigo, orihimePost1, "🥶❄️");
+    await crearComentario(rukia, orihimePost1, "aguante el invierno");
 
-    await crearComentario(
-      ichigo,
-      orihimePost1,
-      "🥶❄️"
-    );
+    await crearComentario(ichigo, orihimePost2, "anda a dormir");
 
-    await crearComentario(
-      rukia,
-      orihimePost1,
-      "aguante el invierno"
-    );
+    await crearComentario(ichigo, orihimePost3, "🧡🧡🧡🧡" );
+    await crearComentario(rukia, orihimePost3, "૮ ˶ᵔ ᵕ ᵔ˶ ა");
 
-    await crearComentario(
-      ichigo,
-      orihimePost2,
-      "anda a dormir"
-    );
+    await crearComentario(ichigo, aizenPost1, "re de la unión soviética" );
+    await crearComentario(rukia, aizenPost1, "☭");
+    await crearComentario(orihime, aizenPost1, "qué loco");
 
-    await crearComentario(
-      ichigo,
-      orihimePost3,
-      "🧡🧡🧡🧡"
-    );
-
-    await crearComentario(
-      rukia,
-      orihimePost3,
-      "૮ ˶ᵔ ᵕ ᵔ˶ ა"
-    );
-
+    await crearComentario(ichigo, aizenPost2, "🥂" );
+    await crearComentario(rukia, aizenPost2, "con un hombre o con una mujer?");
+    await crearComentario(orihime, aizenPost2, "🤵🏻👰🏻");
 
     await Follower.create([
       {
@@ -354,17 +372,54 @@ const crearSeed = async () => {
       },
       {
         followerId: rukia._id,
+        followedId: orihime._id,
+      },
+    ]);
+
+    await Follower.create([
+      {
+        followerId: ichigo._id,
+        followedId: aizen._id,
+      },
+      {
+        followerId: aizen._id,
+        followedId: ichigo._id,
+      },
+    ]);
+
+    await Follower.create([
+      {
+        followerId: aizen._id,
+        followedId: rukia._id,
+      },
+      {
+        followerId: rukia._id,
+        followedId: aizen._id,
+      },
+    ]);
+
+    await Follower.create([
+      {
+        followerId: orihime._id,
+        followedId: aizen._id,
+      },
+      {
+        followerId: aizen._id,
         followedId: orihime._id,
       },
     ]);
 
     console.log("--------------------------------");
     console.log("Seed completado correctamente.");
-    console.log("Usuarios: 3");
-    console.log("Publicaciones: 8");
-    console.log("Comentarios: 9");
+    console.log("Usuarios: 4");
+    console.log("Publicaciones: 11");
+    console.log("Comentarios: 15");
     console.log("Etiquetas: creadas o reutilizadas");
     console.log("Seguimiento mutuo: Ichigo y Rukia");
+    console.log("Seguimiento mutuo: Ichigo y Orihime");
+    console.log("Seguimiento mutuo: Ichigo y Aizen");
+    console.log("Seguimiento mutuo: Rukia y Aizen");
+    console.log("Seguimiento mutuo: Orihime y Aizen");
     console.log("--------------------------------");
   } catch (error) {
     console.error("Error al ejecutar el seed:", error);
