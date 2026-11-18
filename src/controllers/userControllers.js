@@ -277,7 +277,52 @@ const unFollowUser = async (req, res) => {
   }
 };
 
+
+const loginUser = async (req, res) => {
+  try {
+    const { nickName, contraseña } = req.body;
+
+    if (!nickName || !contraseña) {
+      return res.status(400).json({
+        message: "El nickname y la contraseña son obligatorios",
+      });
+    }
+
+    const user = await User.findOne({ nickName }).select("+contraseña");
+
+    if (!user) {
+      return res.status(401).json({ message: "El usuario o la contraseña son incorrectos", });
+    }
+
+    const contraseñaCorrecta = await bcrypt.compare(
+      contraseña,
+      user.contraseña
+    );
+
+    if (!contraseñaCorrecta) {
+      return res.status(401).json({ message: "El usuario o la contraseña son incorrectos", });
+    }
+
+    return res.status(200).json({
+      message: "Inicio de sesión exitoso",
+      user: {
+        _id: user._id,
+        nickName: user.nickName,
+        nombre: user.nombre,
+        email: user.email,
+        fotoPerfil: user.fotoPerfil || "",
+      },
+    });
+  } catch (error) {
+    console.error("Error al iniciar sesión:", error);
+
+    return res.status(500).json({
+      message: "Error al iniciar sesión",
+    });
+  }
+};
+
 module.exports = {
   getUsers, getUser, createUser, updateUser, deleteUser,
-  getFollowers, getFollowing, followUser, unFollowUser,
+  getFollowers, getFollowing, followUser, unFollowUser, loginUser
 };

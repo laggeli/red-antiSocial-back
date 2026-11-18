@@ -10,6 +10,9 @@ const setProfilePhotoPath = require('../middlewares/setProfilePhotoPath');
 
 const router = Router();
 
+// iniciar sesión
+router.post("/login", userControllers.loginUser);
+
 // usuarios
 router.get("/", userControllers.getUsers); // obtener todos los usuarios
 router.get("/:nickName", validateUserExistence, userControllers.getUser); // obtener un usuario por su nickName
