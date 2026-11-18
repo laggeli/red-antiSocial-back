@@ -46,21 +46,21 @@ const usuariosDemo = [
     nickName: "ichigo",
     nombre: "Ichigo Kurosaki",
     email: "ichigo@gmail.com",
-    contraseña: "123456",
+    contraseña: "rukiaBleach11",
     fotoPerfil: imagenesLocales.ichigo.url,
   },
   {
     nickName: "rukiaa",
     nombre: "Rukia",
     email: "rukia@gmail.com",
-    contraseña: "123456",
+    contraseña: "ichigoBleach12",
     fotoPerfil: imagenesLocales.rukia.url,
   },
   {
     nickName: "orihime",
     nombre: "Orihime Inoue",
     email: "OrihimeIno@gmail.com",
-    contraseña: "bleach123",
+    contraseña: "orihimeBleach21",
     fotoPerfil: imagenesLocales.orihime.url,
   },
 ];
@@ -68,7 +68,6 @@ const usuariosDemo = [
 const copiarImagenes = () => {
   fs.mkdirSync(carpetaUploads, { recursive: true });
 
-  // Rukia e Ichigo se copian desde seed/assets.
   [imagenesLocales.rukia, imagenesLocales.ichigo].forEach(
     (imagen) => {
       if (!fs.existsSync(imagen.origen)) {
@@ -84,7 +83,6 @@ const copiarImagenes = () => {
     }
   );
 
-  // Orihime ya debe estar en public/uploads.
   if (!fs.existsSync(imagenesLocales.orihime.origen)) {
     throw new Error(
       "No se encontró OrihimeInoue.jpg dentro de src/public/uploads."
@@ -110,8 +108,6 @@ const obtenerUsuario = async (datos) => {
       contraseña: contraseñaHash,
     });
   } else {
-    // Actualizamos los datos públicos, pero no cambiamos
-    // la contraseña de una cuenta que ya existía.
     usuario.nombre = datos.nombre;
     usuario.email = datos.email;
     usuario.fotoPerfil = datos.fotoPerfil;
@@ -181,7 +177,6 @@ const crearSeed = async () => {
 
     copiarImagenes();
 
-    // Crear o recuperar las tres cuentas.
     const ichigo = await obtenerUsuario(usuariosDemo[0]);
     const rukia = await obtenerUsuario(usuariosDemo[1]);
     const orihime = await obtenerUsuario(usuariosDemo[2]);
@@ -192,7 +187,6 @@ const crearSeed = async () => {
       orihime._id,
     ];
 
-    // Identificar las publicaciones anteriores de estas cuentas.
     const publicacionesAnteriores = await Post.find({
       userId: { $in: usuariosIds },
     }).select("_id");
@@ -200,9 +194,6 @@ const crearSeed = async () => {
     const publicacionesIds = publicacionesAnteriores.map(
       (post) => post._id
     );
-
-    // Borrar solamente comentarios de las publicaciones
-    // de ejemplo. No toca comentarios en publicaciones ajenas.
     await Comment.deleteMany({
       postId: { $in: publicacionesIds },
     });
@@ -211,17 +202,12 @@ const crearSeed = async () => {
       userId: { $in: usuariosIds },
     });
 
-    // Reiniciar las relaciones de seguimiento de las cuentas demo.
     await Follower.deleteMany({
       $or: [
         { followerId: { $in: usuariosIds } },
         { followedId: { $in: usuariosIds } },
       ],
     });
-
-    // -------------------------
-    // PUBLICACIONES DE RUKIA
-    // -------------------------
 
     const rukiaPost1 = await crearPublicacion(
       rukia,
@@ -250,10 +236,6 @@ const crearSeed = async () => {
       [imagenesLocales.rukia.url]
     );
 
-    // -------------------------
-    // PUBLICACIÓN DE ICHIGO
-    // -------------------------
-
     const ichigoPost1 = await crearPublicacion(
       ichigo,
       "02:42",
@@ -262,10 +244,6 @@ const crearSeed = async () => {
         "https://i.pinimg.com/736x/1c/01/dc/1c01dc14188cfe9377f0394ee74ab3db.jpg",
       ]
     );
-
-    // -------------------------
-    // PUBLICACIONES DE ORIHIME
-    // -------------------------
 
     const orihimePost1 = await crearPublicacion(
       orihime,
@@ -296,10 +274,6 @@ const crearSeed = async () => {
       ]
     );
 
-    // -------------------------
-    // COMENTARIOS DE RUKIA E ICHIGO
-    // -------------------------
-
     await crearComentario(rukia, rukiaPost1, "hola");
 
     await crearComentario(
@@ -319,10 +293,6 @@ const crearSeed = async () => {
       rukiaPost4,
       "obviooo!!!"
     );
-
-    // -------------------------
-    // COMENTARIOS DE ORIHIME
-    // -------------------------
 
     await crearComentario(
       ichigo,
@@ -354,10 +324,6 @@ const crearSeed = async () => {
       "૮ ˶ᵔ ᵕ ᵔ˶ ა"
     );
 
-    // -------------------------
-    // SEGUIMIENTO MUTUO
-    // ICHIGO <-> RUKIA
-    // -------------------------
 
     await Follower.create([
       {
@@ -367,6 +333,28 @@ const crearSeed = async () => {
       {
         followerId: rukia._id,
         followedId: ichigo._id,
+      },
+    ]);
+
+    await Follower.create([
+      {
+        followerId: ichigo._id,
+        followedId: orihime._id,
+      },
+      {
+        followerId: orihime._id,
+        followedId: ichigo._id,
+      },
+    ]);
+
+    await Follower.create([
+      {
+        followerId: orihime._id,
+        followedId: rukia._id,
+      },
+      {
+        followerId: rukia._id,
+        followedId: orihime._id,
       },
     ]);
 
