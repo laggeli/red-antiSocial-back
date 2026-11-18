@@ -6,6 +6,7 @@
   "scripts": {
     "start": "cross-env NODE_ENV=production node src/index.js",
     "dev": "cross-env NODE_ENV=development nodemon src/index.js",
+    "seed:users": "node src/seed/seedUsers.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start:test": "cross-env NODE_ENV=test nodemon src/index.js",
     "test:users": "cross-env NODE_ENV=test newman run src/tests/UsersTestCollection.json -e src/tests/BASE_URL_ENV.json",
