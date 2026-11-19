@@ -191,6 +191,7 @@ const patchPost = async (req, res) => {
     const {
       descripcion,
       nuevaImagenUrl,
+      imagenesUrls,
       eliminarImagenId,
       agregarTagId,
       quitarTagId,
@@ -211,6 +212,18 @@ const patchPost = async (req, res) => {
     // Sumar imagen nueva por URL.
     if (nuevaImagenUrl) {
       post.imagenes.push({ url: nuevaImagenUrl });
+    }
+    //Para múltiples URLs de FormData
+    if (imagenesUrls) {
+      const urlsArray = Array.isArray(imagenesUrls)
+        ? imagenesUrls
+        : [imagenesUrls];
+
+      urlsArray.forEach((url) => {
+        if (url && url.trim()) {
+          post.imagenes.push({ url: url.trim() });
+        }
+      });
     }
 
     // Sumar imágenes físicas nuevas de Multer.

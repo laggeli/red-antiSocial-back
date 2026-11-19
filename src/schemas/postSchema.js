@@ -43,6 +43,10 @@ const patchPostSchema = Joi.object({
   nuevaImagenUrl: Joi.string().uri().optional().messages({
     'string.uri': 'La nueva imagen debe ser una URL válida'
   }),
+  imagenesUrls: Joi.alternatives().try(
+    Joi.string().uri().messages({ 'string.uri': 'La imagen debe ser una URL válida' }),
+    Joi.array().items(Joi.string().uri())
+  ).optional(),
   eliminarImagenId: Joi.string().hex().length(24).optional().messages({
     'string.hex': 'El ID de la imagen a eliminar debe ser hexadecimal',
     'string.length': 'El ID de la imagen a eliminar debe tener 24 caracteres'
